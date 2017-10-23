@@ -103,6 +103,38 @@ export default class ShaderAssembly {
     this.assignmentList.push({ name, type, value });
   }
 
+  /** Deep comparison of two expressions. */
+  public equalExpr(a: Expr, b: Expr): boolean {
+    if (a.kind !== b.kind || a.type !== b.type) {
+      return false;
+    }
+
+    switch (a.kind) {
+      case ExprKind.CALL: {
+        const aCall = a as CallExpr;
+        const bCall = b as CallExpr;
+        if (aCall.funcName !== bCall.funcName || aCall.args.length !== bCall.args.length) {
+          return false;
+        }
+        for (let i = 0; i < aCall.args.length; i += 1) {
+          if (!this.equalExpr(aCall.args[i], bCall.args[i])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      case ExprKind.IDENT: {
+        return (a as IdentExpr).name === (b as IdentExpr).name;
+      }
+      case ExprKind.LITERAL: {
+        return (a as LiteralExpr).value === (b as LiteralExpr).value;
+      }
+      case ExprKind.TYPE_CAST: {
+        return this.equalExpr((a as TypeCast).expr, (b as TypeCast).expr);
+      }
+    }
+  }
+
   /** Return an expression representing the input to a terminal. This is the same as the
       value from the connected output terminal, unless the input is not connected in Which
       case the expression is zero. Also handles de-duping of expressions that are used in
@@ -122,7 +154,7 @@ export default class ShaderAssembly {
     let result: Expr;
     // TODO: This logic is wrong in two ways.
     // need to take into account that uv might be different - compare uv expressions.
-    // number of output connecions is not relevant.
+    // number of output connections is not relevant. (Uhhh, why?)
     // if (outputTerminal.connections.length > 1) {
     //   const cachedValueId = `${outputNode.operator.localPrefix(node.id)}_${outputTerminal.id}`;
     //   if (!this.cachedValues.has(cachedValueId)) {

@@ -3,9 +3,7 @@
 * Blur
 * Blur requires buffered inputs
 * Safari support
-* Finish 'GLResources' tracking.
 * Make brick edges smoother - gamma correction?
-* For illuminate, don't show alpha sliders.
 * Cached signals not working.
 * Cloud storage:
   * List recent documents

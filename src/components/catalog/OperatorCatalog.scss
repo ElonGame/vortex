@@ -9,9 +9,12 @@
   background-color: $listBg;
   user-select: none;
   overflow-y: scroll;
+  flex-shrink: 1;
+  flex-basis: auto;
 
   > .row {
     display: flex;
+    flex-shrink: 0;
     padding: 0 4px;
     cursor: pointer;
 
