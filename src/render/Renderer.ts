@@ -14,6 +14,9 @@ export default class Renderer {
   constructor() {
     this.canvas = document.createElement('canvas');
     this.gl = this.canvas.getContext('webgl2') as WebGLRenderingContext;
+    if (!this.gl) {
+      alert('Vortex requires a browser that supports WebGL 2.0.');
+    }
     this.tiling = 1;
     const gl = this.gl;
     this.vertexBuffers = [

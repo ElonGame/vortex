@@ -34,8 +34,6 @@
     * Stitch (used to blend images that aren't repeating)
   * Filters:
     * Blur
-    * Color Correct
-    * Color Adjust
     * Combine
     * Emboss - simpler than illuminate.
     * Math
