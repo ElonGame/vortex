@@ -2,7 +2,6 @@
 
 * Blur
 * Blur requires buffered inputs
-* Safari support
 * Make brick edges smoother - gamma correction?
 * Cached signals not working.
 * Cloud storage:
@@ -15,6 +14,7 @@
   * UV not fully supported
   * See if we can remove some of the type params that are passed in
 * Limit operator dragging to document size
+* Drag multiple selection.
 * Finish compass rose - center button should center the diagram
 * Upload JSON files
 * Undo / Redo

@@ -198,6 +198,12 @@ export default class ShaderAssembly {
     }
   }
 
+  /** Assign a shader uniform names for an operator parameter. */
+  public addBufferUniform(op: Operator, nodeId: number, param: string) {
+    const uniformName = op.uniformName(nodeId, param);
+    this.out.push(`uniform sampler2D ${uniformName};`);
+  }
+
   /** Generate code for the shader's main function */
   public main(expr: Expr) {
     this.out.push('in highp vec2 vTextureCoord;');

@@ -35,7 +35,12 @@ export abstract class Operator {
         // Set the uniforms for this node and all upstream nodes.
         renderer.setShaderUniforms(node, program);
         if (this.inputs.length > 0) {
-          node.visitUpstreamNodes((upstream, termId) => {
+          for (const input of this.inputs) {
+            if (input.buffered) {
+              renderer.setShaderInputBufferUniforms(node, program, input.id);
+            }
+          }
+          node.visitUpstreamNodes((upstream, connection) => {
             renderer.setShaderUniforms(upstream, program);
           });
         }
@@ -45,7 +50,8 @@ export abstract class Operator {
 
   // Release any GL resources we were holding on to.
   public cleanup(renderer: Renderer, node: GraphNode): void {
-    renderer.deleteResources(node.glResources);
+    renderer.deleteShaderResources(node.glResources);
+    renderer.deleteTextureResources(node.glResources);
   }
 
   /** Locate an operator input by id. */

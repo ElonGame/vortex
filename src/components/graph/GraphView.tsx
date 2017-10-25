@@ -290,7 +290,6 @@ export default class GraphView extends Component<Props, State> {
 
   @bind
   private onEditConnection(connection: Connection, output: boolean) {
-    console.log('edit connection', output);
     if (output) {
       this.setState({
         editConnection: connection,

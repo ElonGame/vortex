@@ -10,6 +10,10 @@ export default class Renderer {
   private vertexShader: WebGLShader;
   private tiling: number;
   private vertexBuffers: WebGLBuffer[];
+  private vertexBuffersInverted: WebGLBuffer[];
+  private frameBuffer: WebGLFramebuffer;
+  private nextTextureUnit: number;
+  private invertY = false;
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -25,6 +29,12 @@ export default class Renderer {
       this.createBuffer(2),
       this.createBuffer(3),
     ];
+    this.vertexBuffersInverted = [
+      null,
+      this.createBuffer(1, true),
+      this.createBuffer(2, true),
+      this.createBuffer(3, true),
+    ];
     this.vertexShader = this.compileShader(gl.VERTEX_SHADER, `#version 300 es
 in vec4 aVertexPosition;
 in vec4 aTextureCoords;
@@ -34,6 +44,9 @@ void main() {
   vTextureCoord = aTextureCoords.xy;
   gl_Position = aVertexPosition;
 }`);
+
+    this.frameBuffer = gl.createFramebuffer();
+    this.nextTextureUnit = 0;
   }
 
   public setTiling(tiling: number) {
@@ -43,25 +56,93 @@ void main() {
   public render(
       node: GraphNode,
       width: number,
-      height: number, out: CanvasRenderingContext2D,
+      height: number,
+      out: CanvasRenderingContext2D,
       rebuildShader: boolean = false) {
     this.canvas.width = width;
     this.canvas.height = height;
 
     const gl = this.gl;
-    gl.viewport(0, 0, width, height);
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
-    gl.clear(gl.COLOR_BUFFER_BIT);
 
     if (!node.glResources) {
       node.glResources = new GLResources();
     }
 
     if (rebuildShader) {
-      node.destroy(this);
+      this.deleteShaderResources(node.glResources);
     }
-    node.render(this);
+
+    // Update buffered inputs - that is, nodes whose inputs require a texture.
+    if (node.inputs.length > 0) {
+      node.visitUpstreamNodes((upstreamNode, connection) => {
+        const input = connection.dest.node.operator.getInput(connection.dest.id);
+        if (input.buffered) {
+          // TODO: We don't always need to redraw this every time.
+          this.renderNodeToBuffer(upstreamNode, connection.dest.node, input.id, rebuildShader);
+        }
+      });
+    }
+
+    this.nextTextureUnit = 0;
+    gl.viewport(0, 0, width, height);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    this.invertY = false;
+    node.operator.renderNode(this, node);
     out.drawImage(this.canvas, 0, 0);
+  }
+
+  // Render a node to a texture buffer, used by nodes that have buffered inputs.
+  public renderNodeToBuffer(
+      srcNode: GraphNode, dstNode: GraphNode, inputId: string, rebuildShader: boolean) {
+    const gl = this.gl;
+    const width: number = nextHighestPowerOfTwo(this.canvas.width);
+    const height: number = nextHighestPowerOfTwo(this.canvas.height);
+
+    this.nextTextureUnit = 0;
+
+    // We're rendering the source node and caching the result on the destination node.
+    if (!srcNode.glResources) {
+      srcNode.glResources = new GLResources();
+    }
+
+    if (rebuildShader) {
+      this.deleteShaderResources(srcNode.glResources);
+    }
+
+    const destResources = dstNode.glResources;
+    let texture = destResources.textures.get(inputId);
+    if (!destResources.textures.has(inputId)) {
+      texture = gl.createTexture();
+      destResources.textures.set(inputId, texture);
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+    const fb: any = this.frameBuffer; // WebGL type definitions missing frame buffer properties
+    fb.width = width;
+    fb.height = height;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    gl.viewport(0, 0, width, height);
+    gl.disable(gl.DEPTH_TEST);
+    gl.clearColor(1.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    this.invertY = true;
+    srcNode.operator.renderNode(this, srcNode);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    // gl.generateMipmap(gl.TEXTURE_2D);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   public executeShaderProgram(
@@ -76,7 +157,11 @@ void main() {
     const gl = this.gl;
 
     gl.useProgram(node.glResources.program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffers[this.tiling]);
+    if (this.invertY) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffersInverted[this.tiling]);
+    } else {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffers[this.tiling]);
+    }
 
     // Set up the vertex buffer
     const vertexPosition = gl.getAttribLocation(node.glResources.program, 'aVertexPosition');
@@ -155,17 +240,31 @@ void main() {
           break;
         }
         case DataType.IMAGE: {
-          gl.activeTexture(gl.TEXTURE0);
-          if (value) {
-            gl.bindTexture(gl.TEXTURE_2D, node.glResources.textures.get(param.id));
-          } else {
-            gl.bindTexture(gl.TEXTURE_2D, null);
-          }
-          gl.uniform1i(gl.getUniformLocation(program, uniformName), 0);
+          this.bindTexture(program, node.glResources.textures.get(param.id), uniformName);
           break;
         }
       }
     }
+  }
+
+  public setShaderInputBufferUniforms(node: GraphNode, program: WebGLProgram, id: string) {
+    this.bindTexture(
+        program,
+        node.glResources.textures.get(id),
+        node.operator.uniformName(node.id, id));
+  }
+
+  public bindTexture(program: WebGLProgram, texture: WebGLTexture, uniformName: string) {
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0 + this.nextTextureUnit);
+    if (texture) {
+      // console.log('texture ok:', uniformName, this.nextTextureUnit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+    } else {
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    gl.uniform1i(gl.getUniformLocation(program, uniformName), this.nextTextureUnit);
+    this.nextTextureUnit += 1;
   }
 
   public compileShaderProgram(fsSource: string, node: GraphNode): void {
@@ -203,11 +302,6 @@ void main() {
 
     node.glResources.fragment = fragmentShader;
     node.glResources.program = shaderProgram;
-  }
-
-  public deleteResources(resources: GLResources) {
-    this.deleteShaderResources(resources);
-    this.deleteTextureResources(resources);
   }
 
   public deleteShaderResources(resources: GLResources) {
@@ -274,9 +368,11 @@ void main() {
     return shader;
   }
 
-  private createBuffer(tiling: number): WebGLBuffer {
+  private createBuffer(tiling: number, invert = false): WebGLBuffer {
     const gl = this.gl;
     const positions: number[] = [];
+    const ty0 = invert ? 1 : 0;
+    const ty1 = invert ? 0 : 1;
     for (let y = 0; y < tiling; y += 1) {
       const y0 = y * 2 / tiling - 1;
       const y1 = (y + 1) * 2 / tiling - 1;
@@ -284,13 +380,13 @@ void main() {
         const x0 = x * 2 / tiling - 1;
         const x1 = (x + 1) * 2 / tiling - 1;
         positions.splice(positions.length, 0,
-          x0, y0, 0, 1,
-          x0, y1, 0, 0,
-          x1, y0, 1, 1,
+          x0, y0, 0, ty1,
+          x0, y1, 0, ty0,
+          x1, y0, 1, ty1,
 
-          x0, y1, 0, 0,
-          x1, y0, 1, 1,
-          x1, y1, 1, 0,
+          x0, y1, 0, ty0,
+          x1, y0, 1, ty1,
+          x1, y1, 1, ty0,
         );
       }
     }
@@ -303,4 +399,12 @@ void main() {
 
 function isPowerOf2(value: number) {
   return (value & (value - 1)) === 0;
+}
+
+function nextHighestPowerOfTwo(value: number): number {
+  let result = 2;
+  while (result < value) {
+    result *= 2;
+  }
+  return result;
 }

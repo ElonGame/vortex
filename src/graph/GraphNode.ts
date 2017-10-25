@@ -2,6 +2,7 @@ import { observable } from 'mobx';
 import { DataType, Operator } from '../operators';
 import GLResources from '../render/GLResources';
 import Renderer from '../render/Renderer';
+import { Connection } from './Connection';
 import { InputTerminal } from './InputTerminal';
 import { OutputTerminal } from './OutputTerminal';
 import { Terminal } from './Terminal';
@@ -72,10 +73,6 @@ export class GraphNode {
     return this.operator.name;
   }
 
-  public render(renderer: Renderer) {
-    this.operator.renderNode(renderer, this);
-  }
-
   public destroy(renderer: Renderer) {
     this.operator.cleanup(renderer, this);
   }
@@ -95,8 +92,10 @@ export class GraphNode {
   /** Visit all nodes which transitively feed into this node's inputs.
       Return 'false' from the callback to signal that the visitor should not traverse any
       deeper into the graph.
+      @param callback A function which is called for every upstream node. Three arguments are
+        passed: the upstream node, and the connection leading to that node.
   */
-  public visitUpstreamNodes(callback: (node: GraphNode, termId: string) => boolean | void) {
+  public visitUpstreamNodes(callback: (node: GraphNode, conn: Connection) => boolean | void) {
     const visited = new Set<number>();
     const visit = (node: GraphNode): void => {
       if (!visited.has(node.id)) {
@@ -104,7 +103,7 @@ export class GraphNode {
         for (const input of node.inputs) {
           const connection = input.connection;
           if (connection && connection.source) {
-            if (callback(connection.source.node, connection.source.id) !== false) {
+            if (callback(connection.source.node, connection) !== false) {
               visit(input.connection.source.node);
             }
           }
@@ -118,7 +117,7 @@ export class GraphNode {
       Return 'false' from the callback to signal that the visitor should not traverse any
       deeper into the graph.
   */
-  public visitDownstreamNodes(callback: (node: GraphNode, termId: string) => boolean | void) {
+  public visitDownstreamNodes(callback: (node: GraphNode, conn: Connection) => boolean | void) {
     const visited = new Set<number>();
     const visit = (node: GraphNode): void => {
       if (!visited.has(node.id)) {
@@ -126,7 +125,7 @@ export class GraphNode {
         for (const output of this.outputs) {
           for (const connection of output.connections) {
             if (connection.dest) {
-              if (callback(connection.dest.node, connection.dest.id) !== false) {
+              if (callback(connection.dest.node, connection) !== false) {
                 visit(connection.source.node);
               }
             }
