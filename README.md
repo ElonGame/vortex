@@ -74,6 +74,12 @@ Vortex is heavily inspired by Holger Dammertz's NeoTextureEdit application. Ther
 significant differences between the two programs, the biggest of which is the fact that Vortex has
 been entirely rewritten in JavaScript and runs entirely in the browser.
 
+## Looking for Contributions
+
+I would be very interested in contributions for additional operator types. Note, however, that
+it is strongly preferred that operators be seamlessly tileable, which can be a challenge
+with certain algorithms.
+
 ### If you like Vortex, check out some of my other projects:
 
   * https://github.com/viridia/certainty
