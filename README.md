@@ -80,6 +80,8 @@ I would be very interested in contributions for additional operator types. Note,
 it is strongly preferred that operators be seamlessly tileable, which can be a challenge
 with certain algorithms.
 
+Feel free to create a GitHub issue if you have an idea you'd like to see implemented.
+
 ### If you like Vortex, check out some of my other projects:
 
   * https://github.com/viridia/certainty
