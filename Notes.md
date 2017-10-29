@@ -1,9 +1,5 @@
 # TODO:
 
-* Blur
-* Blur requires buffered inputs
-* Make brick edges smoother - gamma correction?
-* Cached signals not working.
 * Cloud storage:
   * List recent documents
   * Garbage collection for image references.
@@ -16,11 +12,11 @@
 * Limit operator dragging to document size
 * Drag multiple selection.
 * Finish compass rose - center button should center the diagram
+* Make brick edges smoother - gamma correction?
+* Cached signals not working.
 * Upload JSON files
 * Undo / Redo
 * Log scale controls - shininess is a good example
-* Standardize 'Resources' across all operators
-* Move 'render' to Operator class
 * Output type conversion - clean up and make consistent.
 * Enter key to close dialogs.
 * Possibly unify code for creating and editing connections - former uses DnD, latter uses mouse
@@ -31,9 +27,8 @@
 # Operators to do:
   * Transforms:
     * Mirror
-    * Stitch (used to blend images that aren't repeating)
+    * Stitch / Cross-fade (used to blend images that aren't repeating)
   * Filters:
-    * Blur
     * Combine
     * Emboss - simpler than illuminate.
     * Math
@@ -50,7 +45,6 @@
     * feComposite
     * feConvolveMatrix
     * feDisplacementMap
-    * feImage
     * feMerge
     * feMorphology
     * feOffset

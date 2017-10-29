@@ -62,6 +62,10 @@ One you have a .env file, you can run:
 
 Then navigate to http://localhost:9001
 
+## Articles
+
+  * [The technology behind Vortex](https://medium.com/machine-words/the-technology-behind-vortex-a-real-time-browser-based-seamless-texture-generator-b18807fd8865)
+
 ## Credits
 
 Vortex was written by Talin.
