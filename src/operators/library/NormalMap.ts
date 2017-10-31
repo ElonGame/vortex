@@ -25,7 +25,7 @@ class NormalMap extends Operator {
       min: -0.5,
       max: 0.5,
       precision: 3,
-      increment: 0.01,
+      increment: 0.001,
       default: 0.2,
     },
   ];

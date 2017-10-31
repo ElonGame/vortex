@@ -155,12 +155,13 @@ void main() {
     }
 
     const gl = this.gl;
+    const tiling = this.invertY ? 1 : this.tiling;
 
     gl.useProgram(node.glResources.program);
     if (this.invertY) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffersInverted[this.tiling]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffersInverted[tiling]);
     } else {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffers[this.tiling]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffers[tiling]);
     }
 
     // Set up the vertex buffer
@@ -179,7 +180,7 @@ void main() {
       setShaderVars(gl);
     }
 
-    gl.drawArrays(gl.TRIANGLES, 0, this.tiling ** 2 * 6);
+    gl.drawArrays(gl.TRIANGLES, 0, tiling ** 2 * 6);
   }
 
   public setShaderUniforms(node: GraphNode, program: WebGLProgram) {
