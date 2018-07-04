@@ -10,6 +10,11 @@ The actual computation of the images is performed by the GPU using WebGL.
 
 ![screenshot](./images/screenshot.png "Vortex UI")
 
+## Some example textures:
+
+* [Hex Bricks](https://vortex.run/2SI)
+* [Galactic Horizon](https://vortex.run/2SJ)
+
 ## Running the application in the Cloud
 
 Go to https://vortex.run
